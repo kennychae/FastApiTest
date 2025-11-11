@@ -96,15 +96,19 @@ async def run_model_endpoint(
         if mode == "audio":
             latest = get_latest_audio_path()
             if not latest:
-                return JSONResponse({"ok": False, "error": "오디오가 없습니다."}, status_code=400)
-            result = model.run_modelaudio2text(mode="file", wavefile=str(latest))            return JSONResponse({"ok": True, "picked": {"picked": "audio"}, "result": result})
-
-        # mode == "text"
-        text = (user_input or "").strip()
-        if not text:
-            return JSONResponse({"ok": False, "error": "텍스트가 없습니다."}, status_code=400)
-        result = model.run_model(user_text=text, audio_path=None)
-        return JSONResponse({"ok": True, "picked": {"picked": "text", "text": text}, "result": result})
-
+                return JSONResponse(
+                    {"ok": False, "error": "오디오가 없습니다."}, 
+                    status_code=400
+                )
+            
+            # ✅ 파일을 열어서 객체로 전달
+            with open(latest, "rb") as audio_file:
+                result = audio2text(mode="file", wavefile=audio_file)
+            
+            return JSONResponse({
+                "ok": True, 
+                "picked": {"picked": "audio"}, 
+                "result": result
+            })
     except Exception as e:
         return JSONResponse({"ok": False, "error": f"서버 내부 오류: {str(e)}"}, status_code=500)
