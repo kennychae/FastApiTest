@@ -68,6 +68,12 @@ class VADModel:
 class _AudioActivityDetection:
     """
     음성 데이터를 읽어 와서 화자가 대화를 하고 있는지 감시
+    Status
+    - 1. Silent: 무음 상태
+    - 2. Speech: 음성 감지 상태
+    - 3. Finished: 음성 녹음 종료 상태
+    - 4. Error: 연속 무음으로 인한 시스템 종료 상태
+    - 5. Reset: 스트림 상태 초기화 상태
     
     Attributes:
         is_recording:  현재 녹음중인 여부로 최초로 음성이 감지되면 True로 변경되고,
@@ -75,6 +81,12 @@ class _AudioActivityDetection:
         speech_buffer: 녹음된 음성 데이터를 저장하는 버퍼  
         stop_count: 연속 무음 카운트
         silence_threshold: 연속 무음으로 간주하는 임계값
+        exit_threshold: 연속 무음으로 간주하여 시스템 종료하는 임계값
+    
+    Methods:
+        resetStream(): 스트림 상태 초기화
+        __call__(speech_detected, audio_buffer): 음성 데이터에서 화자 활동을 감지하고 녹음 시작/종료를 제어
+
     """
     def __init__(self, 
                  silence_threshold: int = AudioConfig.SILENCE_THRESHOLD,
@@ -94,7 +106,7 @@ class _AudioActivityDetection:
 
     def __call__(self, 
                  speech_detected: list,
-                 audio_buffer: np.array) -> np.array:
+                 audio_buffer: np.array) -> dict:
         """
         음성 데이터에서 화자 활동을 감지하고 녹음 시작/종료를 제어합니다.
 
@@ -158,7 +170,25 @@ _vad_model = VADModel(monitoring=False)
 
 def process_audio_chunk(audio_data,
                         reset:bool=False)-> dict:
-    """내부 함수: 실시간 음성 수집 및 텍스트 변환"""
+    """
+    실시간 오디오 청취 및 텍스트 변환 내부 함수
+    
+    Status
+    - 1. Silent: 무음 상태
+    - 2. Speech: 음성 감지 상태
+    - 3. Finished: 음성 녹음 종료 상태
+    - 4. Error: 연속 무음으로 인한 시스템 종료 상태
+    - 5. Reset: 스트림 상태 초기화 상태
+    
+    Args:
+        audio_data (np.array): 오디오 신호 배열
+        reset (bool): 스트림 상태 초기화 여부
+    Returns:
+        dict: {
+            "status": "Silent" | "Speech" | "Finished" | "Error" | "Reset", 
+            "text": 변환된 텍스트 또는 None
+        }
+    """
     event_checker = _event_checker  
     vad_model = _vad_model
     
